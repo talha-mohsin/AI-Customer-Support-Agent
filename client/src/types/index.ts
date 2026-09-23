@@ -33,6 +33,11 @@ export interface Message {
   createdAt: string;
 }
 
+export interface AgentActivityEvent {
+  tool: string;
+  label: string;
+}
+
 export interface Conversation {
   _id: string;
   title: string;

@@ -17,7 +17,7 @@ export const env = {
   jwtSecret: required("JWT_SECRET", "dev-secret-change-me"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
   clientOrigin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173",
-  llmApiKey: process.env.LLM_API_KEY,
-  vectorDbApiKey: process.env.VECTOR_DB_API_KEY,
-  vectorDbIndex: process.env.VECTOR_DB_INDEX,
+  llmApiKey: required("LLM_API_KEY"),
+  vectorDbApiKey: required("VECTOR_DB_API_KEY"),
+  vectorDbIndex: required("VECTOR_DB_INDEX"),
 };

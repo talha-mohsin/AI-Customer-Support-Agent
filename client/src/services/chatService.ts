@@ -1,9 +1,10 @@
 import { api } from "./api";
-import type { Conversation } from "../types";
+import type { AgentActivityEvent, Conversation } from "../types";
 
 interface ChatResponse {
   message: string;
   conversationId: string;
+  activity: AgentActivityEvent[];
 }
 
 export async function sendMessage(

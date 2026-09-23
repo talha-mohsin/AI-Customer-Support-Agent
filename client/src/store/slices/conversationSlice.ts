@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { Conversation, Message } from "../../types";
+import type { AgentActivityEvent, Conversation, Message } from "../../types";
 import * as chatService from "../../services/chatService";
 import { getErrorMessage } from "../../services/api";
 
@@ -9,6 +9,7 @@ interface ConversationState {
   listStatus: "idle" | "loading" | "succeeded" | "failed";
   currentStatus: "idle" | "loading" | "succeeded" | "failed";
   sending: boolean;
+  lastActivity: AgentActivityEvent[];
   error: string | null;
 }
 
@@ -18,6 +19,7 @@ const initialState: ConversationState = {
   listStatus: "idle",
   currentStatus: "idle",
   sending: false,
+  lastActivity: [],
   error: null,
 };
 
@@ -65,6 +67,7 @@ const conversationSlice = createSlice({
     clearCurrentConversation(state) {
       state.current = null;
       state.currentStatus = "idle";
+      state.lastActivity = [];
     },
     appendLocalMessage(state, action: PayloadAction<Message>) {
       if (!state.current) {
@@ -110,9 +113,11 @@ const conversationSlice = createSlice({
       .addCase(sendChatMessage.pending, (state) => {
         state.sending = true;
         state.error = null;
+        state.lastActivity = [];
       })
       .addCase(sendChatMessage.fulfilled, (state, action) => {
         state.sending = false;
+        state.lastActivity = action.payload.activity;
         if (state.current) {
           state.current._id = action.payload.conversationId;
           state.current.messages.push({

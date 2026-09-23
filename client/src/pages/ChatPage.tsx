@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Send, Bot, MessageSquare } from "lucide-react";
+import { Send, Bot, MessageSquare, Loader2 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   appendLocalMessage,
@@ -19,7 +19,9 @@ export function ChatPage() {
   const conversationId = searchParams.get("id") ?? undefined;
   const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const { current, currentStatus, sending, error } = useAppSelector((s) => s.conversations);
+  const { current, currentStatus, sending, lastActivity, error } = useAppSelector(
+    (s) => s.conversations
+  );
 
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -34,7 +36,7 @@ export function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [current?.messages.length]);
+  }, [current?.messages.length, sending]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -71,29 +73,58 @@ export function ChatPage() {
           />
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col gap-4">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex items-end gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}
-              >
-                {m.role === "assistant" ? (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-                    <Bot size={14} />
+            {messages.map((m, i) => {
+              const isLast = i === messages.length - 1;
+              return (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <div
+                    className={`flex items-end gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}
+                  >
+                    {m.role === "assistant" ? (
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                        <Bot size={14} />
+                      </div>
+                    ) : (
+                      <Avatar name={user?.name ?? "?"} size={28} />
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                        m.role === "user"
+                          ? "rounded-br-sm bg-accent text-white"
+                          : "rounded-bl-sm border border-border bg-surface text-text"
+                      }`}
+                    >
+                      {m.content}
+                    </div>
                   </div>
-                ) : (
-                  <Avatar name={user?.name ?? "?"} size={28} />
-                )}
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
-                    m.role === "user"
-                      ? "rounded-br-sm bg-accent text-white"
-                      : "rounded-bl-sm border border-border bg-surface text-text"
-                  }`}
-                >
-                  {m.content}
+
+                  {isLast && !sending && m.role === "assistant" && lastActivity.length > 0 && (
+                    <div className="ml-9 flex flex-wrap gap-1.5">
+                      {lastActivity.map((a, j) => (
+                        <span
+                          key={j}
+                          className="rounded-full bg-surface-alt px-2.5 py-1 text-xs text-muted"
+                        >
+                          {a.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {sending && (
+              <div className="flex items-end gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                  <Bot size={14} />
+                </div>
+                <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm border border-border bg-surface px-4 py-2 text-sm text-muted">
+                  <Loader2 size={14} className="animate-spin" />
+                  Thinking...
                 </div>
               </div>
-            ))}
+            )}
             <div ref={bottomRef} />
           </div>
         )}
