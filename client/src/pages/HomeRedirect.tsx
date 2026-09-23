@@ -1,13 +1,12 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 export function HomeRedirect() {
-  const { user, loading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
 
   return (
-    <Navigate to={user.role === "SUPPORT_AGENT" ? "/support/tickets" : "/dashboard"} replace />
+    <Navigate to={user.role === "SUPPORT_AGENT" ? "/support/dashboard" : "/dashboard"} replace />
   );
 }

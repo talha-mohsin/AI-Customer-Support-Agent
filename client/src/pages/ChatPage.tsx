@@ -1,93 +1,97 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { Message } from "../types";
-import * as chatService from "../services/chatService";
-import { getErrorMessage } from "../services/api";
+import { Send, Bot, MessageSquare } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import {
+  appendLocalMessage,
+  clearCurrentConversation,
+  fetchConversationById,
+  fetchConversations,
+  sendChatMessage,
+} from "../store/slices/conversationSlice";
+import { Avatar } from "../components/ui/Avatar";
+import { EmptyState } from "../components/ui/EmptyState";
+import { ErrorBanner } from "../components/ui/ErrorState";
+import { useAuth } from "../hooks/useAuth";
 
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationId = searchParams.get("id") ?? undefined;
+  const dispatch = useAppDispatch();
+  const { user } = useAuth();
+  const { current, currentStatus, sending, error } = useAppSelector((s) => s.conversations);
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(Boolean(conversationId));
-  const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!conversationId) {
-      setMessages([]);
-      setLoadingHistory(false);
+      dispatch(clearCurrentConversation());
       return;
     }
-    setLoadingHistory(true);
-    chatService
-      .getConversation(conversationId)
-      .then((conversation) => setMessages(conversation.messages))
-      .catch((err) => setError(getErrorMessage(err)))
-      .finally(() => setLoadingHistory(false));
-  }, [conversationId]);
+    dispatch(fetchConversationById(conversationId));
+  }, [conversationId, dispatch]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [current?.messages.length]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || sending) return;
+    const trimmed = input.trim();
+    if (!trimmed || sending) return;
 
-    const userMessage: Message = {
-      role: "user",
-      content: input,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
+    dispatch(appendLocalMessage({ role: "user", content: trimmed, createdAt: new Date().toISOString() }));
     setInput("");
-    setSending(true);
-    setError("");
 
-    try {
-      const res = await chatService.sendMessage(userMessage.content, conversationId);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: res.message, createdAt: new Date().toISOString() },
-      ]);
-      if (!conversationId) {
-        setSearchParams({ id: res.conversationId });
-      }
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setSending(false);
+    const result = await dispatch(sendChatMessage({ message: trimmed, conversationId }));
+    if (sendChatMessage.fulfilled.match(result) && !conversationId) {
+      setSearchParams({ id: result.payload.conversationId });
+      dispatch(fetchConversations());
     }
   };
 
+  const messages = current?.messages ?? [];
+
   return (
-    <div className="flex h-screen flex-col">
-      <header className="border-b border-slate-200 bg-white px-8 py-4">
-        <h1 className="text-lg font-semibold text-slate-900">Support Chat</h1>
+    <div className="flex h-[calc(100vh-56px)] flex-col md:h-screen">
+      <header className="hidden shrink-0 border-b border-border bg-surface px-6 py-4 md:block">
+        <h1 className="text-lg font-semibold text-text">Support Chat</h1>
+        <p className="text-sm text-muted">Ask about order status, policies, or request a human agent.</p>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        {loadingHistory ? (
-          <p className="text-sm text-slate-500">Loading conversation...</p>
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        {currentStatus === "loading" ? (
+          <p className="text-sm text-muted">Loading conversation...</p>
         ) : messages.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Ask about order status, refund/shipping policies, or request a human agent.
-          </p>
+          <EmptyState
+            icon={MessageSquare}
+            title="Start a conversation"
+            description="Ask about order status, refund/shipping policies, or request a human agent."
+          />
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="mx-auto flex max-w-2xl flex-col gap-4">
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`max-w-xl rounded-lg px-4 py-2 text-sm ${
-                  m.role === "user"
-                    ? "ml-auto bg-indigo-600 text-white"
-                    : "bg-white border border-slate-200 text-slate-800"
-                }`}
+                className={`flex items-end gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}
               >
-                {m.content}
+                {m.role === "assistant" ? (
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                    <Bot size={14} />
+                  </div>
+                ) : (
+                  <Avatar name={user?.name ?? "?"} size={28} />
+                )}
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                    m.role === "user"
+                      ? "rounded-br-sm bg-accent text-white"
+                      : "rounded-bl-sm border border-border bg-surface text-text"
+                  }`}
+                >
+                  {m.content}
+                </div>
               </div>
             ))}
             <div ref={bottomRef} />
@@ -95,21 +99,29 @@ export function ChatPage() {
         )}
       </div>
 
-      {error && <p className="px-8 text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="px-4 sm:px-6">
+          <ErrorBanner message={error} />
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-200 bg-white p-4">
+      <form
+        onSubmit={handleSubmit}
+        className="flex shrink-0 gap-2 border-t border-border bg-surface p-3 sm:p-4"
+      >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type your message..."
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent"
         />
         <button
           type="submit"
-          disabled={sending}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          disabled={sending || !input.trim()}
+          className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
-          {sending ? "Sending..." : "Send"}
+          <Send size={15} />
+          <span className="hidden sm:inline">{sending ? "Sending..." : "Send"}</span>
         </button>
       </form>
     </div>

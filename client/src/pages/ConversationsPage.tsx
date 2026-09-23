@@ -1,60 +1,71 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import type { Conversation } from "../types";
-import * as chatService from "../services/chatService";
-import { getErrorMessage } from "../services/api";
-
-const statusStyles: Record<Conversation["status"], string> = {
-  OPEN: "bg-blue-50 text-blue-700",
-  ESCALATED: "bg-amber-50 text-amber-700",
-  CLOSED: "bg-slate-100 text-slate-600",
-};
+import { History, MessageSquarePlus } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchConversations } from "../store/slices/conversationSlice";
+import { PageHeader } from "../components/ui/PageHeader";
+import { SkeletonList } from "../components/ui/Skeleton";
+import { EmptyState } from "../components/ui/EmptyState";
+import { ErrorBanner } from "../components/ui/ErrorState";
+import { Badge } from "../components/ui/Badge";
+import { conversationStatusTone } from "../utils/statusTone";
 
 export function ConversationsPage() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const dispatch = useAppDispatch();
+  const { items, listStatus, error } = useAppSelector((s) => s.conversations);
 
   useEffect(() => {
-    chatService
-      .getConversations()
-      .then(setConversations)
-      .catch((err) => setError(getErrorMessage(err)))
-      .finally(() => setLoading(false));
-  }, []);
+    dispatch(fetchConversations());
+  }, [dispatch]);
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold text-slate-900">Conversations</h1>
-
-      {loading && <p className="mt-4 text-sm text-slate-500">Loading...</p>}
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-
-      {!loading && conversations.length === 0 && (
-        <p className="mt-4 text-sm text-slate-500">
-          No conversations yet. <Link to="/chat" className="text-indigo-600 hover:underline">Start one</Link>.
-        </p>
-      )}
-
-      <div className="mt-4 flex flex-col gap-2">
-        {conversations.map((c) => (
+    <div className="p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title="Conversations"
+        description="Revisit your past chats with the support agent."
+        action={
           <Link
-            key={c._id}
-            to={`/chat?id=${c._id}`}
-            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm hover:shadow-md"
+            to="/chat"
+            className="flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-white hover:bg-accent-hover"
           >
-            <div>
-              <p className="font-medium text-slate-900">{c.title}</p>
-              <p className="text-xs text-slate-500">
-                {new Date(c.updatedAt).toLocaleString()}
-              </p>
-            </div>
-            <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusStyles[c.status]}`}>
-              {c.status}
-            </span>
+            <MessageSquarePlus size={16} />
+            New chat
           </Link>
-        ))}
-      </div>
+        }
+      />
+
+      {error && <ErrorBanner message={error} />}
+
+      {listStatus === "loading" ? (
+        <SkeletonList rows={4} />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={History}
+          title="No conversations yet"
+          description="Start a chat with the support agent to see it here."
+          action={
+            <Link to="/chat" className="text-sm font-medium text-accent hover:underline">
+              Start a conversation
+            </Link>
+          }
+        />
+      ) : (
+        <div className="flex flex-col gap-2">
+          {items.map((c) => (
+            <Link
+              key={c._id}
+              to={`/chat?id=${c._id}`}
+              className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 transition-colors hover:border-accent/40"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium text-text">{c.title}</p>
+                <p className="text-xs text-muted">{new Date(c.updatedAt).toLocaleString()}</p>
+              </div>
+              <Badge tone={conversationStatusTone[c.status]}>{c.status}</Badge>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

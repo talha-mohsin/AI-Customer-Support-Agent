@@ -45,6 +45,15 @@ export interface Conversation {
 export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 export type TicketStatus = "OPEN" | "IN_PROGRESS" | "ESCALATED" | "RESOLVED" | "CLOSED";
 
+export interface CustomerSummary {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  orderCount: number;
+  ticketCount: number;
+}
+
 export interface Ticket {
   _id: string;
   subject: string;

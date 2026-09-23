@@ -1,90 +1,89 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { Ticket, TicketStatus } from "../types";
-import * as ticketService from "../services/ticketService";
-import { getErrorMessage } from "../services/api";
+import { ArrowLeft } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchAllTickets, updateTicket } from "../store/slices/ticketSlice";
+import type { TicketStatus } from "../types";
+import { Skeleton } from "../components/ui/Skeleton";
+import { ErrorBanner } from "../components/ui/ErrorState";
+import { Badge } from "../components/ui/Badge";
+import { priorityTone } from "../utils/statusTone";
 
 const statusOptions: TicketStatus[] = ["OPEN", "IN_PROGRESS", "ESCALATED", "RESOLVED", "CLOSED"];
 
 export function SupportTicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
+  const dispatch = useAppDispatch();
+  const { allTickets, status, error } = useAppSelector((s) => s.tickets);
 
   useEffect(() => {
-    ticketService
-      .getAllTickets()
-      .then((tickets) => {
-        const found = tickets.find((t) => t._id === id);
-        if (!found) {
-          setError("Ticket not found");
-          return;
-        }
-        setTicket(found);
-      })
-      .catch((err) => setError(getErrorMessage(err)))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  const handleStatusChange = async (status: TicketStatus) => {
-    if (!ticket) return;
-    setSaving(true);
-    try {
-      const updated = await ticketService.updateTicket(ticket._id, { status });
-      setTicket({ ...updated, customerId: ticket.customerId });
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setSaving(false);
+    if (allTickets.length === 0) {
+      dispatch(fetchAllTickets());
     }
+  }, [dispatch, allTickets.length]);
+
+  const ticket = allTickets.find((t) => t._id === id);
+
+  const handleStatusChange = (nextStatus: TicketStatus) => {
+    if (!ticket) return;
+    dispatch(updateTicket({ id: ticket._id, updates: { status: nextStatus } }));
   };
 
-  if (loading) return <div className="p-8 text-sm text-slate-500">Loading...</div>;
-  if (error) return <div className="p-8 text-sm text-red-600">{error}</div>;
-  if (!ticket) return null;
-
-  const customer = typeof ticket.customerId === "object" ? ticket.customerId : null;
-
   return (
-    <div className="p-8">
-      <button onClick={() => navigate(-1)} className="mb-4 text-sm text-indigo-600 hover:underline">
-        ← Back
+    <div className="p-4 sm:p-6 lg:p-8">
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+      >
+        <ArrowLeft size={15} />
+        Back
       </button>
 
-      <div className="max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">{ticket.subject}</h1>
-        {customer && (
-          <p className="mt-1 text-sm text-slate-500">
-            {customer.name} · {customer.email}
-          </p>
-        )}
+      {error && <ErrorBanner message={error} />}
 
-        <p className="mt-4 text-sm text-slate-700">{ticket.description}</p>
-
-        <div className="mt-4 flex items-center gap-4 text-sm">
-          <span className="text-slate-500">Priority: <span className="font-medium text-slate-900">{ticket.priority}</span></span>
-          <span className="text-slate-500">Created: {new Date(ticket.createdAt).toLocaleString()}</span>
+      {status === "loading" && !ticket ? (
+        <div className="max-w-2xl rounded-lg border border-border bg-surface p-6">
+          <Skeleton className="mb-3 h-6 w-1/2" />
+          <Skeleton className="mb-2 h-4 w-1/3" />
+          <Skeleton className="h-20 w-full" />
         </div>
+      ) : !ticket ? (
+        <p className="text-sm text-muted">Ticket not found.</p>
+      ) : (
+        <div className="max-w-2xl rounded-lg border border-border bg-surface p-6">
+          <h1 className="text-xl font-semibold text-text">{ticket.subject}</h1>
+          {typeof ticket.customerId === "object" && (
+            <p className="mt-1 text-sm text-muted">
+              {ticket.customerId.name} · {ticket.customerId.email}
+            </p>
+          )}
 
-        <div className="mt-6">
-          <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-          <select
-            value={ticket.status}
-            disabled={saving}
-            onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-          >
-            {statusOptions.map((s) => (
-              <option key={s} value={s}>
-                {s.replace("_", " ")}
-              </option>
-            ))}
-          </select>
+          <p className="mt-4 whitespace-pre-wrap text-sm text-text">{ticket.description}</p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted">
+            <span className="flex items-center gap-1.5">
+              Priority: <Badge tone={priorityTone[ticket.priority]}>{ticket.priority}</Badge>
+            </span>
+            <span>Created: {new Date(ticket.createdAt).toLocaleString()}</span>
+          </div>
+
+          <div className="mt-6">
+            <label className="mb-1.5 block text-sm font-medium text-text">Status</label>
+            <select
+              value={ticket.status}
+              onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
+              className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-text outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            >
+              {statusOptions.map((s) => (
+                <option key={s} value={s}>
+                  {s.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
