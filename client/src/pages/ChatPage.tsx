@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Send, Bot, MessageSquare, Loader2 } from "lucide-react";
+import { Badge } from "../components/ui/Badge";
+import { conversationStatusTone } from "../utils/statusTone";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   appendLocalMessage,
@@ -58,9 +60,20 @@ export function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-56px)] flex-col md:h-screen">
       <header className="hidden shrink-0 border-b border-border bg-surface px-6 py-4 md:block">
-        <h1 className="text-lg font-semibold text-text">Support Chat</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-text">Support Chat</h1>
+          {current && current.status !== "OPEN" && (
+            <Badge tone={conversationStatusTone[current.status]}>{current.status}</Badge>
+          )}
+        </div>
         <p className="text-sm text-muted">Ask about order status, policies, or request a human agent.</p>
       </header>
+
+      {current?.status === "ESCALATED" && (
+        <div className="border-b border-border bg-warning-soft px-4 py-2 text-sm text-warning sm:px-6">
+          This conversation has been escalated to a human support agent.
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         {currentStatus === "loading" ? (

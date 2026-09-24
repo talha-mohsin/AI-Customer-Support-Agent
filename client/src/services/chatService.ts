@@ -1,9 +1,10 @@
 import { api } from "./api";
-import type { AgentActivityEvent, Conversation } from "../types";
+import type { AgentActivityEvent, Conversation, ConversationStatus } from "../types";
 
 interface ChatResponse {
   message: string;
   conversationId: string;
+  status: ConversationStatus;
   activity: AgentActivityEvent[];
 }
 

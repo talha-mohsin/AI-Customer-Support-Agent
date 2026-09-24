@@ -2,12 +2,19 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "../config/db";
 import { User } from "../models/User";
 import { Order } from "../models/Order";
+import { Ticket } from "../models/Ticket";
+import { Conversation } from "../models/Conversation";
 import mongoose from "mongoose";
 
 async function seed(): Promise<void> {
   await connectDB();
 
-  await Promise.all([User.deleteMany({}), Order.deleteMany({})]);
+  await Promise.all([
+    User.deleteMany({}),
+    Order.deleteMany({}),
+    Ticket.deleteMany({}),
+    Conversation.deleteMany({}),
+  ]);
 
   const passwordHash = await bcrypt.hash("Password123!", 10);
 

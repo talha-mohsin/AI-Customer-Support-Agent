@@ -2,7 +2,7 @@
 
 A MERN-based customer support platform where a LangGraph agent decides whether to search a private knowledge base using RAG, call authenticated backend tools for customer/order data, create support tickets, or escalate conversations to human support.
 
-> **Status: Day 1 + Day 2 complete.** Auth, RBAC, data models, core REST APIs, the React UI (with Redux Toolkit, light/dark theme, and a collapsible sidebar), the RAG pipeline, and the LangGraph agent with real tool-calling are all implemented and manually verified end-to-end. Human escalation UI polish on the support dashboard and a broader automated test suite remain for Day 3 — see [Agent.md](Agent.md).
+> **Status: complete (Day 1–3).** Auth, RBAC, data models, core REST APIs, the React UI (Redux Toolkit, light/dark theme, collapsible sidebar), the RAG pipeline, the LangGraph agent with real tool-calling, human escalation (reflected live in the chat UI and the support dashboard), and an automated test suite are all implemented and verified end-to-end. See [Agent.md](Agent.md) for the original build plan.
 
 ## Problem
 
@@ -16,10 +16,11 @@ Customer support teams get repetitive questions (order status, refund/shipping p
 - **LangGraph agent** with real tool-calling: `searchKnowledgeBase`, `getCustomer`, `getOrder`, `createSupportTicket`, `escalateToHuman` (see [docs/agent-flow.md](docs/agent-flow.md))
 - **RAG** over the `knowledge-base/` markdown docs, embedded into Pinecone and retrieved per query
 - Safe "agent activity" chips in the chat UI (e.g. "Searching knowledge base...", "Checking order...") without exposing the model's reasoning
-- Human escalation: the agent can mark a conversation `ESCALATED` and open/update a real ticket
+- Human escalation: the agent can mark a conversation `ESCALATED` and open/update a real ticket — reflected immediately as a banner in the customer's chat and on the support kanban board
 - Redux Toolkit for app state, a persisted light/dark theme, and a responsive collapsible sidebar
 - Support dashboard (overview stats, kanban-style ticket board, ticket detail/status-update view, customers list)
-- Centralized error handling (including a graceful LLM/RAG failure fallback), request validation (Zod), rate limiting, Helmet, CORS
+- Centralized error handling (including a graceful LLM/RAG failure fallback), request validation (Zod), tiered rate limiting (general API, stricter on auth, per-minute on chat), Helmet, CORS
+- Automated test suite (Vitest + Supertest) covering auth, RBAC, and data-isolation scenarios (22 tests)
 
 ## Stack
 
@@ -107,6 +108,20 @@ All routes above (except `/auth/*`) require `Authorization: Bearer <token>`. `/s
 
 Re-run `npm run ingest` in `server/` any time the `knowledge-base/*.md` files change — it re-embeds and replaces the index contents.
 
+## Testing
+
+```bash
+cd server && npm test
+```
+
+Runs 22 Vitest + Supertest tests against a real MongoDB (a separate `-test` suffixed database, derived automatically from `MONGODB_URI`, so it never touches your seeded demo data):
+
+- **Auth**: register, duplicate email, invalid payload, login (valid/invalid/nonexistent), protected route without/with a bad token, wrong-role access
+- **Orders**: only-own-orders scoping, valid lookup, 404 for a nonexistent order, 404 for another customer's order (not leaked), role block
+- **Tickets**: creation, validation, own-tickets scoping, role block, support list/update, escalation to `ESCALATED`, the customers list with order/ticket counts
+
+The RAG pipeline, LangGraph agent, and tool-calling scenarios below are verified as live integration/demo scenarios rather than unit tests, since they call a real hosted LLM/vector DB and are subject to that provider's rate limits.
+
 ## Demo Credentials
 
 Seeded by `npm run seed` in `server/`:
@@ -133,5 +148,5 @@ Seeded orders for the customer account: `ORD-1001` (SHIPPED), `ORD-1002` (DELIVE
 
 - Streaming responses in the chat UI
 - Pagination on tickets/conversations lists
-- Automated test suite (unit + integration)
 - Persist per-message tool activity so it survives a conversation reload, not just the live turn
+- Automated integration tests for the agent/RAG path using a mocked LLM, so they don't depend on live provider quota

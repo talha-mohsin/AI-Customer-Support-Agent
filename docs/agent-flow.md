@@ -2,7 +2,7 @@
 
 ## Stack
 
-- **LLM**: Google Gemini (`gemini-3.6-flash`) via `@langchain/google-genai`, used for both tool-calling and final response generation.
+- **LLM**: Google Gemini (`gemini-flash-lite-latest`) via `@langchain/google-genai`, used for both tool-calling and final response generation. Chosen over a full "flash" model because free-tier request quotas are tracked per model, and the lite alias has separate (and in practice higher) headroom — see `server/src/config/ai.ts`.
 - **Embeddings**: Gemini (`gemini-embedding-001`, 768 dimensions) via `@langchain/google-genai`.
 - **Vector DB**: Pinecone (serverless, cosine similarity) via `@langchain/pinecone`.
 - **Orchestration**: LangGraph (`@langchain/langgraph`) `StateGraph`.
@@ -65,4 +65,4 @@ If no relevant chunks are found, the tool returns an explicit "no relevant docum
 
 ## Known limitation
 
-The Gemini free tier used for this project caps `gemini-3.6-flash` at a low daily request quota. In production this would use a paid tier or a higher-quota model; the fallback path above is what a user sees if the quota is hit mid-demo.
+Any Gemini free-tier API key has a daily request quota per model. In production this would use a paid tier; the fallback path above is what a user sees if the quota is hit mid-demo. One subtlety observed while building this: if a tool call (e.g. `escalateToHuman`) succeeds but the *following* LLM call (the one that phrases the final reply) hits the quota, the tool's database side effect still persists — the customer may see the generic fallback text even though the escalation/ticket was actually created. The support dashboard and `/tickets` always reflect the real DB state regardless.

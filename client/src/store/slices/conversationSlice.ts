@@ -120,6 +120,7 @@ const conversationSlice = createSlice({
         state.lastActivity = action.payload.activity;
         if (state.current) {
           state.current._id = action.payload.conversationId;
+          state.current.status = action.payload.status;
           state.current.messages.push({
             role: "assistant",
             content: action.payload.message,

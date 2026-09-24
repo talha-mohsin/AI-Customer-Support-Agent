@@ -3,7 +3,10 @@ import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { env } from "./env";
 
-export const CHAT_MODEL = "gemini-3.6-flash";
+// gemini-flash-lite-latest is used (rather than a full "flash"/"pro" model) because
+// the free tier's request quota is tracked per-model; the lite alias has a separate,
+// higher daily quota, which matters for a demo running on a free API key.
+export const CHAT_MODEL = "gemini-flash-lite-latest";
 export const EMBEDDING_MODEL = "models/gemini-embedding-001";
 export const EMBEDDING_DIMENSIONS = 768;
 

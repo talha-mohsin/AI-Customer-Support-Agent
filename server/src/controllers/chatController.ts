@@ -56,5 +56,12 @@ export const sendChatMessage = catchAsync(async (req: Request, res: Response) =>
 
   await conversation.save();
 
-  res.status(200).json({ message: reply, conversationId: conversation._id, activity });
+  const latest = await Conversation.findById(conversation._id).select("status").lean();
+
+  res.status(200).json({
+    message: reply,
+    conversationId: conversation._id,
+    status: latest?.status ?? conversation.status,
+    activity,
+  });
 });
