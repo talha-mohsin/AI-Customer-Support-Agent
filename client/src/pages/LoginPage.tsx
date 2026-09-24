@@ -78,12 +78,6 @@ export function LoginPage() {
             Create account
           </Link>
         </p>
-
-        <div className="mt-6 rounded-md bg-surface-alt p-3 text-xs text-muted">
-          <p className="font-medium text-text">Demo credentials</p>
-          <p>customer@example.com / Password123!</p>
-          <p>support@example.com / Password123!</p>
-        </div>
       </div>
     </div>
   );
