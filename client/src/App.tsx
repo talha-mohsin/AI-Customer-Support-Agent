@@ -12,7 +12,7 @@ import { SupportDashboardPage } from "./pages/SupportDashboardPage";
 import { SupportTicketsPage } from "./pages/SupportTicketsPage";
 import { SupportTicketDetailPage } from "./pages/SupportTicketDetailPage";
 import { SupportCustomersPage } from "./pages/SupportCustomersPage";
-import { HomeRedirect } from "./pages/HomeRedirect";
+import { HomeRedirect, NotFoundRedirect } from "./pages/HomeRedirect";
 
 function App() {
   return (
@@ -45,7 +45,7 @@ function App() {
       </Route>
 
       <Route path="/" element={<HomeRedirect />} />
-      <Route path="*" element={<HomeRedirect />} />
+      <Route path="*" element={<NotFoundRedirect />} />
     </Routes>
   );
 }

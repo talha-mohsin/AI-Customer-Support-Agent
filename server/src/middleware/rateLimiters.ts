@@ -17,7 +17,7 @@ export const authLimiter = rateLimit({
 
 export const chatLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 15,
+  limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "You're sending messages too quickly. Please slow down." },
